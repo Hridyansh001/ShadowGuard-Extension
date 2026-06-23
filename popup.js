@@ -1,0 +1,1 @@
+console.log("ShadowGuard popup active");
