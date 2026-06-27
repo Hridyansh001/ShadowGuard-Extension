@@ -1,6 +1,7 @@
 console.log("ShadowGuard v2 Loaded");
 
-const BACKEND_URL = "http://localhost:8080/api/scan";
+// const BACKEND_URL = "http://localhost:8080/api/scan";
+const BACKEND_URL = "https://shadowguard-backend-final.onrender.com/api/scan";
 
 let lastValue = ""; 
 let timeout = null;
