@@ -7,7 +7,7 @@ let lastValue = "";
 let timeout = null;
 let isBlocked = false;
 let overrideOption = false;
-
+let isFileScanActive = false;
 // ── STYLES ──────────────────────────────────────────────────────────────────
 const STYLES = `
   @keyframes sg-slideDown {
@@ -460,6 +460,7 @@ function handleResult(result) {
 
 // ── INPUT DETECTION ──────────────────────────────────────────────────────────
 function detectInput() {
+  if (isFileScanActive) return;
   const editor =
     document.querySelector('[contenteditable="true"]') ||
     document.querySelector("textarea");
@@ -469,15 +470,25 @@ function detectInput() {
   const text = (editor.innerText || editor.value || "").trim();
 
   if (!text || text.length < 5) {
+    if (isBlocked) return;  
     removeBanner();
-    lastValue     = "";
-    isBlocked     = false;
+    lastValue      = "";
     overrideOption = false;
     const modal = document.getElementById("shadowguard-modal");
     if (modal) modal.remove();
     toggleSendButton(false);
     return;
   }
+  // if (!text || text.length < 5) {
+  //   removeBanner();
+  //   lastValue     = "";
+  //   isBlocked     = false;
+  //   overrideOption = false;
+  //   const modal = document.getElementById("shadowguard-modal");
+  //   if (modal) modal.remove();
+  //   toggleSendButton(false);
+  //   return;
+  // }
 
   if (text !== lastValue) {
     lastValue = text;
@@ -515,3 +526,38 @@ document.addEventListener("submit", (e) => {
     return false;
   }
 }, true);
+
+document.addEventListener("change", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  if (target.type !== "file") return;
+  if (!target.files || target.files.length === 0) return;
+
+  const file = target.files[0];
+
+  isFileScanActive = true;  // pause text scanning
+  toggleSendButton(true);
+  createBanner("Scanning uploaded file...", "warning");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  fetch("https://shadowguard-backend-final.onrender.com/api/scan/file", {
+    method: "POST",
+    body: formData,
+  })
+    .then(r => r.json())
+    .then(result => {
+      console.log("[ShadowGuard File]", result);
+      removeBanner();
+      isFileScanActive = false;  // resume text scanning
+      handleResult(result);
+    })
+    .catch(err => {
+      console.error("[ShadowGuard File]", err);
+      removeBanner();
+      isFileScanActive = false;
+      toggleSendButton(false);
+      createBanner("File scan failed — backend unreachable", "warning");
+    });
+});
