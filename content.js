@@ -1,13 +1,33 @@
+let sgEnabled = true;
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === "SG_TOGGLE") {
+    sgEnabled = msg.enabled;
+    if (!sgEnabled) {
+      removeBanner();
+      isBlocked = false;
+      toggleSendButton(false);
+      const modal = document.getElementById("shadowguard-modal");
+      if (modal) modal.remove();
+    }
+  }
+});
+
+chrome.storage.local.get(["sg_enabled"], (data) => {
+  sgEnabled = data.sg_enabled !== false;
+});
 console.log("ShadowGuard v2 Loaded");
 
 // const BACKEND_URL = "http://localhost:8080/api/scan";
 const BACKEND_URL = "https://shadowguard-backend-final.onrender.com/api/scan";
+const IMAGE_SCAN_URL = "https://shadowguard-backend-final.onrender.com/api/scan/image";
 
 let lastValue = ""; 
 let timeout = null;
 let isBlocked = false;
 let overrideOption = false;
 let isFileScanActive = false;
+let isImageScanning = false;
 // ── STYLES ──────────────────────────────────────────────────────────────────
 const STYLES = `
   @keyframes sg-slideDown {
@@ -425,7 +445,6 @@ function showOverrideMethod(result) {
     toggleSendButton(false); modal.remove(); removeBanner();
     document.removeEventListener("keydown", onEsc);
   });
-
   // ── Hover effects ──
   const cancelBtn   = document.getElementById("sg-cancel");
   const overrideBtn = document.getElementById("sg-override");
@@ -438,9 +457,22 @@ function showOverrideMethod(result) {
   closeBtn.onmouseover    = () => { closeBtn.style.borderColor = "#475569"; closeBtn.style.color = "#e2e8f0"; };
   closeBtn.onmouseout     = () => { closeBtn.style.borderColor = "#1e2832"; closeBtn.style.color = "#475569"; };
 }
-
+function saveScanResult(verdict, text) {
+  chrome.storage.local.get(["sg_stats", "sg_history"], (data) => {
+    const stats   = data.sg_stats   || { blocked: 0, warning: 0, safe: 0 };
+    const history = data.sg_history || [];
+    const v = verdict.toLowerCase();
+    if (v === "blocked") stats.blocked++;
+    else if (v === "warning") stats.warning++;
+    else stats.safe++;
+    history.unshift({ verdict, text: (text || "").slice(0, 60), time: new Date().toISOString() });
+    if (history.length > 20) history.pop();
+    chrome.storage.local.set({ sg_stats: stats, sg_history: history });
+  });
+}
 // ── RESULT HANDLER ───────────────────────────────────────────────────────────
 function handleResult(result) {
+  saveScanResult(result.verdict, result.mask || result.text || "");
   if (result.verdict === "BLOCKED") {
     if (overrideOption) { overrideOption = false; return; }
     isBlocked = true;
@@ -457,10 +489,63 @@ function handleResult(result) {
     toggleSendButton(false);
   }
 }
+async function scanClipboardImage(file) {
 
+  if (isImageScanning) return;
+
+  isImageScanning = true;
+
+  toggleSendButton(true);
+
+  createBanner("Scanning pasted screenshot...", "warning");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+
+    const response = await fetch(IMAGE_SCAN_URL, {
+    method: "POST",
+    body: formData
+});
+
+if (!response.ok) {
+    throw new Error("OCR request failed");
+}
+
+const result = await response.json();
+
+    console.log("[ShadowGuard Screenshot]", result);
+
+    removeBanner();
+
+    isImageScanning = false;
+
+    handleResult(result);
+
+    if (result.verdict === "SAFE") {
+      toggleSendButton(false);
+    }
+
+  } catch (err) {
+
+    console.error(err);
+
+    isImageScanning = false;
+
+    removeBanner();
+
+    toggleSendButton(false);
+
+    createBanner(
+      "Screenshot scan failed.",
+      "warning"
+    );
+  }
+}
 // ── INPUT DETECTION ──────────────────────────────────────────────────────────
 function detectInput() {
-  if (isFileScanActive) return;
+  if (!sgEnabled || isFileScanActive || isImageScanning) return;
   const editor =
     document.querySelector('[contenteditable="true"]') ||
     document.querySelector("textarea");
@@ -510,7 +595,9 @@ setInterval(detectInput, 300);
 document.addEventListener("input", detectInput);
 
 document.addEventListener("keydown", (e) => {
-  if (isBlocked && (e.key === "Enter" || e.keyCode === 13)) {
+
+  // if (isBlocked && (e.key === "Enter" || e.keyCode === 13)) 
+  if ((isBlocked || isImageScanning) &&(e.key === "Enter" || e.keyCode === 13)){
     e.preventDefault();
     e.stopImmediatePropagation();
     e.stopPropagation();
@@ -519,14 +606,39 @@ document.addEventListener("keydown", (e) => {
 }, true);
 
 document.addEventListener("submit", (e) => {
-  if (isBlocked) {
+  if (isBlocked|| isImageScanning) {
     e.preventDefault();
     e.stopImmediatePropagation();
     e.stopPropagation();
     return false;
   }
 }, true);
+document.addEventListener(
+  "paste",
+  async (event) => {
 
+    const items = event.clipboardData?.items;
+
+    if (!items) return;
+
+    for (const item of items) {
+
+      if (!item.type.startsWith("image/")) continue;
+
+      const file = item.getAsFile();
+
+      if (!file) return;
+
+      console.log("[ShadowGuard] Screenshot detected");
+
+      scanClipboardImage(file);
+
+      return;
+    }
+
+  },
+  true
+);
 document.addEventListener("change", async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;

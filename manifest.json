@@ -1,22 +1,21 @@
 {
   "manifest_version": 3,
-
   "name": "ShadowGuard",
-
-  "version": "1.0",
-
-  "description": "Prevents sensitive data leakage through AI tools",
-
+  "version": "2.0",
+  "description": "Real-time AI prompt security scanner — blocks sensitive data before it leaves your browser.",
   "permissions": [
-    "storage"
-  ],  
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
   "host_permissions": [
     "https://gemini.google.com/*",
-  "https://chatgpt.com/*",
-  "http://localhost:8080/*",
-  "https://claude.ai/*",
-  "https://github.com/*"       
-],
+    "https://chatgpt.com/*",
+    "http://localhost:8080/*",
+    "https://shadowguard-backend-final.onrender.com/*",
+    "https://claude.ai/*",
+    "https://github.com/*"
+  ],
   "content_scripts": [
     {
       "matches": [
@@ -25,20 +24,13 @@
         "https://claude.ai/*",
         "https://github.com/*"
       ],
-
-      "js": [
-        "content.js"
-      ],
-
-      "css": [
-        "styles.css"
-      ],
-
+      "js": ["content.js"],
+      "css": ["styles.css"],
       "run_at": "document_idle"
     }
   ],
-
   "action": {
     "default_popup": "popup.html"
+    
+    }
   }
-}
