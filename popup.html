@@ -3,40 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ShadowGuard</title>
+  <title>ShadowGuard HUD</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    body {
-      width: 320px;
-      background: #080b0f;
-      color: #e2e8f0;
-      font-family: ui-monospace, 'Cascadia Code', monospace;
-      overflow: hidden;
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #060814;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e295d;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #f97316;
     }
 
+    body {
+      width: 350px;
+      height: 600px;
+      background: #05070f;
+      color: #e2e8f0;
+      font-family: ui-monospace, 'Cascadia Code', 'JetBrains Mono', monospace;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Grid pattern background */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       background-image:
-        linear-gradient(#1e283218 1px, transparent 1px),
-        linear-gradient(90deg, #1e283218 1px, transparent 1px);
-      background-size: 28px 28px;
+        linear-gradient(rgba(30, 41, 93, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 41, 93, 0.08) 1px, transparent 1px);
+      background-size: 20px 20px;
       pointer-events: none;
       z-index: 0;
     }
 
-    .wrap { position: relative; z-index: 1; }
+    .wrap {
+      position: relative;
+      z-index: 1;
+      padding-bottom: 16px;
+    }
 
     /* ── HEADER ── */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 16px;
-      border-bottom: 1px solid #1e2832;
-      background: rgba(8,11,15,0.9);
+      padding: 12px 14px;
+      border-bottom: 1px solid #121833;
+      background: rgba(5, 7, 15, 0.95);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
     .brand {
       display: flex;
@@ -44,197 +70,520 @@
       gap: 8px;
     }
     .shield-icon {
-      width: 30px; height: 30px;
-      background: #141a22;
-      border: 1px solid #263040;
-      border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
+      font-size: 16px;
+      filter: drop-shadow(0 0 5px rgba(249, 115, 22, 0.4));
     }
     .brand-text {
-      font-family: system-ui, sans-serif;
-      font-size: 16px;
-      font-weight: 800;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #f8fafc;
     }
-    .brand-text span { color: #f97316; }
-
+    .brand-text span {
+      color: #f97316;
+      text-shadow: 0 0 8px rgba(249, 115, 22, 0.4);
+    }
+    
     /* Toggle switch */
-    .toggle-wrap { display: flex; align-items: center; gap: 8px; }
-    .toggle-label { font-size: 9px; color: #64748b; letter-spacing: 0.08em; text-transform: uppercase; }
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toggle-label {
+      font-size: 8px;
+      color: #64748b;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+    }
     .toggle {
       position: relative;
-      width: 38px; height: 20px;
-      background: #1e2832;
-      border-radius: 10px;
+      width: 42px;
+      height: 22px;
+      background: #0d1127;
+      border-radius: 12px;
       cursor: pointer;
-      border: 1px solid #263040;
-      transition: all 0.2s;
+      border: 1px solid #1e295d;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    .toggle.active { background: #15803d; border-color: #16a34a; }
+    .toggle.active {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: #10b981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    }
     .toggle::after {
       content: '';
       position: absolute;
-      width: 14px; height: 14px;
-      background: #64748b;
+      width: 16px;
+      height: 16px;
+      background: #475569;
       border-radius: 50%;
-      top: 2px; left: 2px;
-      transition: all 0.2s;
+      top: 2px;
+      left: 2px;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    .toggle.active::after { background: #22c55e; left: 20px; }
+    .toggle.active::after {
+      background: #10b981;
+      left: 22px;
+      box-shadow: 0 0 8px #10b981;
+    }
 
-    /* ── STATUS CARD ── */
-    .status-card {
-      margin: 12px 12px 0;
-      background: #0e1318;
-      border: 1px solid #1e2832;
-      border-radius: 10px;
-      padding: 12px 14px;
+    /* ── SIGNATURE FIREWALL PILL (USER REQUEST MATCH) ── */
+    .firewall-pill-container {
+      padding: 12px 12px 6px;
+    }
+    .firewall-pill {
+      background: #04060b;
+      border: 1.5px solid #00f2fe;
+      border-radius: 40px;
+      padding: 8px 16px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.4), inset 0 0 10px rgba(0, 242, 254, 0.15);
+      transition: all 0.4s ease;
     }
-    .status-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
+    .firewall-pill.inactive {
+      border-color: #334155;
+      box-shadow: none;
+      background: #070911;
+    }
+    .pill-cube {
       flex-shrink: 0;
+      margin-right: 10px;
+      filter: drop-shadow(0 0 5px #00f2fe);
+      transition: all 0.4s ease;
     }
-    .status-dot.active {
-      background: #22c55e;
-      box-shadow: 0 0 8px #22c55e;
-      animation: pulse 2s ease-in-out infinite;
+    .firewall-pill.inactive .pill-cube {
+      filter: none;
     }
-    .status-dot.inactive { background: #475569; }
-    .status-text { flex: 1; }
-    .status-title { font-size: 11px; color: #e2e8f0; font-weight: 700; margin-bottom: 2px; }
-    .status-sub { font-size: 9px; color: #64748b; letter-spacing: 0.04em; }
+    .firewall-pill.inactive .pill-cube path {
+      fill: #475569 !important;
+    }
+    .pill-text {
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: 0.08em;
+      transition: all 0.4s ease;
+    }
+    .firewall-pill.inactive .pill-text {
+      color: #64748b;
+    }
+    .pill-text .cyan-text {
+      color: #00f2fe;
+      font-weight: 900;
+      text-shadow: 0 0 8px rgba(0,242,254,0.6);
+      transition: all 0.4s ease;
+    }
+    .firewall-pill.inactive .pill-text .cyan-text {
+      color: #64748b;
+      text-shadow: none;
+    }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-size: 8px;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 10px 14px 4px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* ── SENSITIVITY SELECTOR ── */
+    .sensitivity-selector {
+      display: flex;
+      background: #0a0e20;
+      border: 1px solid #141b3d;
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+      margin: 4px 12px 8px;
+    }
+    .sensitivity-option {
+      flex: 1;
+      text-align: center;
+      padding: 6px 0;
+      font-size: 8px;
+      font-weight: 700;
+      color: #475569;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      letter-spacing: 0.05em;
+    }
+    .sensitivity-option:hover {
+      color: #94a3b8;
+    }
+    .sensitivity-option.active[data-val="relaxed"] {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .sensitivity-option.active[data-val="balanced"] {
+      background: rgba(249, 115, 22, 0.1);
+      color: #f97316;
+      border: 1px solid rgba(249, 115, 22, 0.2);
+    }
+    .sensitivity-option.active[data-val="strict"] {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
 
     /* ── STATS ROW ── */
     .stats-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
-      padding: 12px 12px 0;
+      padding: 4px 12px 8px;
     }
     .stat-card {
-      background: #0e1318;
-      border: 1px solid #1e2832;
+      background: #090c1e;
+      border: 1px solid #12183c;
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 8px 10px;
       text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
     }
-    .stat-value { font-size: 20px; font-weight: 800; font-family: system-ui, sans-serif; line-height: 1; }
-    .stat-label { font-size: 8px; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 3px; }
-    .stat-card.blocked { border-color: #7f1d1d; background: #1a0a0a; }
-    .stat-card.blocked .stat-value { color: #ef4444; }
-    .stat-card.warning { border-color: #78350f; background: #1a1200; }
-    .stat-card.warning .stat-value { color: #f59e0b; }
-    .stat-card.safe { border-color: #14532d; background: #071a0f; }
-    .stat-card.safe .stat-value { color: #22c55e; }
-
-    /* ── LAST SCAN ── */
-    .section-title {
-      font-size: 9px;
-      color: #475569;
+    .stat-card:hover {
+      transform: translateY(-1px);
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 800;
+      font-family: system-ui, sans-serif;
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 7px;
+      color: #64748b;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding: 12px 12px 6px;
+      letter-spacing: 0.08em;
+      margin-top: 2px;
     }
-    .last-scan {
-      margin: 0 12px;
-      background: #0e1318;
-      border: 1px solid #1e2832;
+    .stat-card.blocked::before { background: #ef4444; }
+    .stat-card.blocked .stat-value {
+      color: #ef4444;
+      text-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+    }
+    .stat-card.blocked { border-color: rgba(239, 68, 68, 0.15); }
+
+    .stat-card.warning::before { background: #f59e0b; }
+    .stat-card.warning .stat-value {
+      color: #f59e0b;
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+    }
+    .stat-card.warning { border-color: rgba(245, 158, 11, 0.15); }
+
+    .stat-card.safe::before { background: #10b981; }
+    .stat-card.safe .stat-value {
+      color: #10b981;
+      text-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+    }
+    .stat-card.safe { border-color: rgba(16, 185, 129, 0.15); }
+
+    /* ── REAL-TIME MONITOR TERMINAL ── */
+    .terminal {
+      margin: 4px 12px 8px;
+      background: #04050d;
+      border: 1px solid #141b3d;
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 10px;
+      box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+      position: relative;
     }
-    .last-scan.blocked { border-color: #7f1d1d; }
-    .last-scan.warning { border-color: #78350f; }
-    .last-scan.safe { border-color: #14532d; }
-    .last-scan-top {
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      border-bottom: 1px solid rgba(30, 41, 93, 0.25);
+      padding-bottom: 4px;
+    }
+    .terminal-title {
+      font-size: 8px;
+      color: #f97316;
+      font-weight: 700;
+      letter-spacing: 0.08em;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 6px;
+      gap: 5px;
     }
-    .verdict-badge {
-      display: flex; align-items: center; gap: 4px;
-      border: 1px solid; border-radius: 4px;
-      padding: 2px 7px;
-      font-size: 8px; font-weight: 700; letter-spacing: 0.08em;
+    .terminal-pulse {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: #f97316;
+      box-shadow: 0 0 6px #f97316;
+      animation: terminalGlow 1.5s infinite ease-in-out;
     }
-    .verdict-badge.blocked { color: #ef4444; border-color: #7f1d1d; background: #1a0a0a; }
-    .verdict-badge.warning { color: #f59e0b; border-color: #78350f; background: #1a1200; }
-    .verdict-badge.safe { color: #22c55e; border-color: #14532d; background: #071a0f; }
-    .scan-time { font-size: 9px; color: #475569; }
-    .scan-text {
-      font-size: 10px; color: #94a3b8;
-      overflow: hidden; text-overflow: ellipsis;
-      white-space: nowrap;
+    .terminal-actions {
+      display: flex;
+      gap: 6px;
     }
-    .no-scan { font-size: 10px; color: #475569; text-align: center; padding: 6px 0; }
-
-    /* ── HISTORY ── */
-    .history-list {
-      margin: 0 12px;
+    .terminal-btn {
+      font-size: 7px;
+      color: #475569;
+      cursor: pointer;
+      background: none;
+      border: none;
+      text-transform: uppercase;
+      font-family: inherit;
+    }
+    .terminal-btn:hover {
+      color: #f8fafc;
+    }
+    .terminal-body {
+      height: 80px;
+      overflow-y: auto;
+      font-size: 8px;
+      line-height: 1.5;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      max-height: 120px;
+      gap: 3px;
+      color: #94a3b8;
+    }
+    .terminal-line {
+      word-break: break-all;
+    }
+    .terminal-line .t-time {
+      color: #475569;
+      margin-right: 4px;
+    }
+    .terminal-line.system { color: #38bdf8; }
+    .terminal-line.info { color: #94a3b8; }
+    .terminal-line.success { color: #4ade80; }
+    .terminal-line.warning { color: #fbbf24; }
+    .terminal-line.error { color: #f87171; }
+    
+    .terminal-cursor {
+      display: inline-block;
+      width: 4px;
+      height: 8px;
+      background: #10b981;
+      animation: blink 1s step-end infinite;
+      margin-left: 2px;
+      vertical-align: middle;
+    }
+
+    /* ── THREAT BREAKDOWN ── */
+    .breakdown-card {
+      margin: 4px 12px 8px;
+      background: #090c1e;
+      border: 1px solid #12183c;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .breakdown-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .breakdown-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .breakdown-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 8px;
+    }
+    .breakdown-name { color: #94a3b8; }
+    .breakdown-count { color: #f8fafc; font-weight: 700; }
+    .breakdown-bar-bg {
+      height: 3px;
+      background: #050711;
+      border-radius: 2px;
+      overflow: hidden;
+      border: 0.5px solid #141b3d;
+    }
+    .breakdown-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .breakdown-item[data-cat="pii"] .breakdown-bar-fill { background: #3b82f6; box-shadow: 0 0 4px #3b82f6; }
+    .breakdown-item[data-cat="secrets"] .breakdown-bar-fill { background: #ef4444; box-shadow: 0 0 4px #ef4444; }
+    .breakdown-item[data-cat="jailbreak"] .breakdown-bar-fill { background: #f59e0b; box-shadow: 0 0 4px #f59e0b; }
+    .breakdown-item[data-cat="leak"] .breakdown-bar-fill { background: #a855f7; box-shadow: 0 0 4px #a855f7; }
+
+    /* ── SCAN HISTORY ── */
+    .history-list {
+      margin: 4px 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 160px;
       overflow-y: auto;
     }
     .history-item {
+      background: #090c1e;
+      border: 1px solid #12183c;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .history-item:hover {
+      border-color: #1e295d;
+      background: #0e132c;
+    }
+    .history-header-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      background: #0e1318;
-      border: 1px solid #1e2832;
-      border-radius: 6px;
-      border-left: 2px solid;
+      justify-content: space-between;
+      padding: 8px 10px;
     }
-    .history-item.blocked { border-left-color: #ef4444; }
-    .history-item.warning { border-left-color: #f59e0b; }
-    .history-item.safe    { border-left-color: #22c55e; }
-    .history-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-    .history-dot.blocked { background: #ef4444; }
-    .history-dot.warning { background: #f59e0b; }
-    .history-dot.safe    { background: #22c55e; }
-    .history-text { flex: 1; font-size: 9px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .history-time { font-size: 8px; color: #475569; flex-shrink: 0; }
+    .history-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+    .history-indicator {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .history-item.blocked .history-indicator { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .history-item.warning .history-indicator { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+    .history-item.safe .history-indicator { background: #10b981; box-shadow: 0 0 6px #10b981; }
+    
+    .history-desc {
+      font-size: 8.5px;
+      color: #e2e8f0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .history-score {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+    .history-item.blocked .history-score { color: #fca5a5; background: rgba(239, 68, 68, 0.15); border: 0.5px solid rgba(239, 68, 68, 0.2); }
+    .history-item.warning .history-score { color: #fcd34d; background: rgba(245, 158, 11, 0.15); border: 0.5px solid rgba(245, 158, 11, 0.2); }
+    .history-item.safe .history-score { color: #a7f3d0; background: rgba(16, 185, 129, 0.15); border: 0.5px solid rgba(16, 185, 129, 0.2); }
+    
+    .history-time {
+      font-size: 7.5px;
+      color: #475569;
+      flex-shrink: 0;
+    }
+    
+    .history-details {
+      display: none;
+      padding: 0 10px 8px;
+      border-top: 1px solid rgba(30, 41, 93, 0.15);
+      background: #060917;
+      animation: detailsSlide 0.2s ease-out;
+    }
+    .history-details-label {
+      font-size: 7px;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 6px;
+      margin-bottom: 2px;
+    }
+    .history-details-val {
+      font-size: 8px;
+      color: #94a3b8;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .history-threats-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .threat-badge {
+      font-size: 7px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: #141b3d;
+      color: #cbd5e1;
+      border: 0.5px solid #1e295d;
+    }
+    .empty-state {
+      font-size: 8px;
+      color: #475569;
+      text-align: center;
+      padding: 20px 0;
+    }
 
     /* ── FOOTER ── */
     .footer {
       display: flex;
       gap: 6px;
-      padding: 12px;
-      border-top: 1px solid #1e2832;
-      margin-top: 12px;
+      padding: 8px 12px;
+      background: rgba(5, 7, 15, 0.95);
+      border-top: 1px solid #121833;
+      margin-top: 8px;
     }
     .btn {
       flex: 1;
       padding: 8px;
-      border-radius: 7px;
-      border: 1px solid #263040;
-      background: #141a22;
+      border-radius: 6px;
+      border: 1px solid #1e295d;
+      background: #0c1024;
       color: #94a3b8;
-      font-family: ui-monospace, monospace;
-      font-size: 9px;
+      font-family: inherit;
+      font-size: 8px;
+      font-weight: 700;
       cursor: pointer;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      transition: all 0.15s;
+      transition: all 0.2s ease;
       text-align: center;
     }
-    .btn:hover { border-color: #f97316; color: #f97316; }
-    .btn.danger:hover { border-color: #ef4444; color: #ef4444; }
-
-    /* ── EMPTY STATE ── */
-    .empty { font-size: 9px; color: #334155; text-align: center; padding: 8px 0; }
-
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
-      50% { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+    .btn:hover {
+      border-color: #f97316;
+      color: #f97316;
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.15);
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .btn.danger:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes terminalGlow {
+      0%, 100% { opacity: 0.6; box-shadow: 0 0 4px #f97316; }
+      50% { opacity: 1; box-shadow: 0 0 8px #f97316; }
+    }
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+    @keyframes detailsSlide {
+      from { opacity: 0; max-height: 0; }
+      to { opacity: 1; max-height: 200px; }
+    }
   </style>
 </head>
 <body>
@@ -247,21 +596,43 @@
       <div class="brand-text">Shadow<span>Guard</span></div>
     </div>
     <div class="toggle-wrap">
-      <span class="toggle-label" id="toggle-label">ON</span>
+      <span class="toggle-label" id="toggle-label">SYSTEM ACTIVE</span>
       <div class="toggle active" id="toggle"></div>
     </div>
   </div>
 
-  <!-- Status -->
-  <div class="status-card" id="status-card">
-    <div class="status-dot active" id="status-dot"></div>
-    <div class="status-text">
-      <div class="status-title" id="status-title">Protection Active</div>
-      <div class="status-sub" id="status-sub">Monitoring all inputs in real time</div>
+  <!-- Injected Visual Match Pill -->
+  <div class="firewall-pill-container">
+    <div class="firewall-pill" id="firewall-pill">
+      <!-- Inline 3D Cyan Cube Stack -->
+      <svg class="pill-cube" id="pill-cube-svg" width="20" height="20" viewBox="0 0 32 32">
+        <g transform="translate(0, 2)">
+          <path d="M4 18 l6 -3.5 l6 3.5 l-6 3.5 z" fill="#22d3ee" />
+          <path d="M4 18 l6 3.5 v4.5 l-6 -3.5 z" fill="#0891b2" />
+          <path d="M10 21.5 l6 -3.5 v4.5 l-6 3.5 z" fill="#0e7490" />
+          <path d="M8 12 l6 -3.5 l6 3.5 l-6 3.5 z" fill="#22d3ee" />
+          <path d="M8 12 l6 3.5 v4.5 l-6 -3.5 z" fill="#0891b2" />
+          <path d="M14 15.5 l6 -3.5 v4.5 l-6 3.5 z" fill="#0e7490" />
+          <path d="M12 6 l6 -3.5 l6 3.5 l-6 3.5 z" fill="#67e8f9" />
+          <path d="M12 6 l6 3.5 v4.5 l-6 -3.5 z" fill="#06b6d4" />
+          <path d="M18 9.5 l6 -3.5 v4.5 l-6 3.5 z" fill="#0891b2" />
+        </g>
+      </svg>
+      <div class="pill-text" id="pill-text-el">
+        <span class="cyan-text">SHADOW</span>GUARD FIREWALL ARCHITECTURE ACTIVATED
+      </div>
     </div>
   </div>
 
-  <!-- Stats -->
+  <!-- Sensitivity Selector -->
+  <div class="section-title">Sensitivity Matrix</div>
+  <div class="sensitivity-selector" id="sensitivity-selector">
+    <div class="sensitivity-option" data-val="relaxed">RELAXED</div>
+    <div class="sensitivity-option active" data-val="balanced">BALANCED</div>
+    <div class="sensitivity-option" data-val="strict">STRICT</div>
+  </div>
+
+  <!-- Metrics Grid -->
   <div class="stats-row">
     <div class="stat-card blocked">
       <div class="stat-value" id="stat-blocked">0</div>
@@ -277,95 +648,79 @@
     </div>
   </div>
 
-  <!-- Last scan -->
-  <div class="section-title">Last Scan</div>
-  <div class="last-scan" id="last-scan-card">
-    <div class="no-scan" id="no-scan-text">No scans yet this session</div>
-    <div id="last-scan-content" style="display:none;">
-      <div class="last-scan-top">
-        <div class="verdict-badge" id="last-verdict-badge">SAFE</div>
-        <div class="scan-time" id="last-scan-time">–</div>
+  <!-- Realtime Terminal Monitor -->
+  <div class="terminal">
+    <div class="terminal-header">
+      <div class="terminal-title">
+        <div class="terminal-pulse"></div>
+        Live Interception Monitor
       </div>
-      <div class="scan-text" id="last-scan-text">–</div>
+      <div class="terminal-actions">
+        <button class="terminal-btn" id="terminal-clear">Clear</button>
+      </div>
+    </div>
+    <div class="terminal-body" id="terminal-body">
+      <div class="terminal-line system"><span class="t-time">00:00:00</span>[SYS] Initializing ShadowGuard core monitor...</div>
+      <div class="terminal-line success"><span class="t-time">00:00:00</span>[SYS] Firewall core connected.<span class="terminal-cursor"></span></div>
+    </div>
+  </div>
+
+  <!-- Threat Breakdown -->
+  <div class="section-title">Threat Breakdown</div>
+  <div class="breakdown-card">
+    <div class="breakdown-grid">
+      <div class="breakdown-item" data-cat="pii">
+        <div class="breakdown-info">
+          <span class="breakdown-name">Personal Identifiable Info (PII)</span>
+          <span class="breakdown-count" id="count-pii">0</span>
+        </div>
+        <div class="breakdown-bar-bg">
+          <div class="breakdown-bar-fill" id="bar-pii"></div>
+        </div>
+      </div>
+      <div class="breakdown-item" data-cat="secrets">
+        <div class="breakdown-info">
+          <span class="breakdown-name">API Keys & Credentials</span>
+          <span class="breakdown-count" id="count-secrets">0</span>
+        </div>
+        <div class="breakdown-bar-bg">
+          <div class="breakdown-bar-fill" id="bar-secrets"></div>
+        </div>
+      </div>
+      <div class="breakdown-item" data-cat="jailbreak">
+        <div class="breakdown-info">
+          <span class="breakdown-name">Injection & Jailbreak Attempts</span>
+          <span class="breakdown-count" id="count-jailbreak">0</span>
+        </div>
+        <div class="breakdown-bar-bg">
+          <div class="breakdown-bar-fill" id="bar-jailbreak"></div>
+        </div>
+      </div>
+      <div class="breakdown-item" data-cat="leak">
+        <div class="breakdown-info">
+          <span class="breakdown-name">Confidential Data & Leaks</span>
+          <span class="breakdown-count" id="count-leak">0</span>
+        </div>
+        <div class="breakdown-bar-bg">
+          <div class="breakdown-bar-fill" id="bar-leak"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- History -->
-  <div class="section-title">Recent History</div>
+  <div class="section-title">Recent History Logs</div>
   <div class="history-list" id="history-list">
-    <div class="empty">No scan history yet</div>
+    <div class="empty-state">No intercept activity logged.</div>
   </div>
 
-  <!-- Footer -->
+  <!-- Footer Controls -->
   <div class="footer">
     <button class="btn" id="btn-dashboard">📊 Dashboard</button>
-    <button class="btn danger" id="btn-clear">🗑 Clear History</button>
+    <button class="btn danger" id="btn-clear">🗑 Reset Logs</button>
   </div>
 
 </div>
 <script src="popup.js"></script>
 </body>
 </html>
-
-<!-- <!DOCTYPE html>
-<html>
-
-<head>
-
-  <title>ShadowGuard</title>
-
-  <style>
-
-    body {
-
-      width: 260px;
-
-      padding: 16px;
-
-      font-family: Arial, sans-serif;
-
-      background: #111827;
-
-      color: white;
-    }
-
-    h2 {
-
-      margin-top: 0;
-
-      color: #f97316;
-    }
-
-    .status {
-
-      margin-top: 12px;
-
-      padding: 10px;
-
-      border-radius: 8px;
-
-      background: #1f2937;
-    }
-
-  </style>
-
-</head>
-
-<body>
-
-  <h2>🛡️ ShadowGuard</h2>
-
-  <p>
-    AI Prompt Protection System
-  </p>
-
-  <div class="status">
-
-    ✅ Extension Active
-
-  </div>
-
-  <script src="popup.js"></script>
-
-</body>
-</html>  -->
